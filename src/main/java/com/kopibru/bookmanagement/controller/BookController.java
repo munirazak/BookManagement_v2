@@ -1,6 +1,7 @@
 package com.kopibru.bookmanagement.controller;
 
 import com.kopibru.bookmanagement.dto.BookDto;
+import com.kopibru.bookmanagement.dto.BookImportResult;
 import com.kopibru.bookmanagement.dto.BorrowRequest;
 import com.kopibru.bookmanagement.service.BookCatalogService;
 import com.kopibru.bookmanagement.service.BookRegistrationService;
@@ -46,11 +47,12 @@ public class BookController {
     }
 
     @PostMapping(value = "/from-file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<List<BookDto>> readBooksFromFile(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<BookImportResult> readBooksFromFile(@RequestParam("file") MultipartFile file) {
         log.info("POST /api/books/from-file filename={}", file.getOriginalFilename());
-        List<BookDto> savedBooks = bookRegistrationService.readBooksFromFile(file);
-        log.info("Imported {} books from file={}", savedBooks.size(), file.getOriginalFilename());
-        return ResponseEntity.status(HttpStatus.CREATED).body(savedBooks);
+        BookImportResult result = bookRegistrationService.readBooksFromFile(file);
+        log.info("Imported {} books ({} errors) from file={}",
+                result.getRegistered().size(), result.getErrors().size(), file.getOriginalFilename());
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
     @GetMapping

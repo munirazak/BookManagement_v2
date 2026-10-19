@@ -1,6 +1,7 @@
 package com.kopibru.bookmanagement.controller;
 
 import com.kopibru.bookmanagement.dto.BookDto;
+import com.kopibru.bookmanagement.dto.BookImportResult;
 import com.kopibru.bookmanagement.dto.BorrowRequest;
 import com.kopibru.bookmanagement.exception.GlobalExceptionHandler;
 import com.kopibru.bookmanagement.model.BookStatus;
@@ -99,11 +100,13 @@ class BookControllerTest {
     void importFromFile_returnsCreated() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "books.txt", "text/plain", "BOOK-001|978-1|Title|Author".getBytes());
-        when(bookRegistrationService.readBooksFromFile(any())).thenReturn(List.of(
-                new BookDto("BOOK-001", "978-1", "Title", "Author", BookStatus.AVAILABLE, null)));
+        when(bookRegistrationService.readBooksFromFile(any())).thenReturn(new BookImportResult(
+                List.of(new BookDto("BOOK-001", "978-1", "Title", "Author", BookStatus.AVAILABLE, null)),
+                List.of("Book copy with id 'BOOK-002' already exists")));
 
         mockMvc.perform(multipart("/api/books/from-file").file(file))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$[0].id").value("BOOK-001"));
+                .andExpect(jsonPath("$.registered[0].id").value("BOOK-001"))
+                .andExpect(jsonPath("$.errors[0]").value("Book copy with id 'BOOK-002' already exists"));
     }
 }
