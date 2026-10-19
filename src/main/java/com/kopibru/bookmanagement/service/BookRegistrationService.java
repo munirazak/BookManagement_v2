@@ -1,6 +1,7 @@
 package com.kopibru.bookmanagement.service;
 
 import com.kopibru.bookmanagement.dto.BookDto;
+import com.kopibru.bookmanagement.dto.BookImportResult;
 import com.kopibru.bookmanagement.exception.DuplicateBookException;
 import com.kopibru.bookmanagement.model.BookCopy;
 import com.kopibru.bookmanagement.model.BookDetail;
@@ -53,16 +54,28 @@ public class BookRegistrationService {
         return toDto(copy, detail);
     }
 
-    @Transactional
-    public List<BookDto> readBooksFromFile(MultipartFile file) {
+    /**
+     * Imports books from a file. Duplicate / conflict rows are recorded in {@code errors}
+     * and do not stop registration of the remaining books. Each book uses its own transaction.
+     */
+    public BookImportResult readBooksFromFile(MultipartFile file) {
         log.info("Importing books from file={}", file.getOriginalFilename());
         List<BookDto> booksFromFile = bookFileReader.read(file);
         List<BookDto> savedBooks = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
+
         for (BookDto book : booksFromFile) {
-            savedBooks.add(register(book));
+            try {
+                savedBooks.add(register(book));
+            } catch (DuplicateBookException ex) {
+                log.warn("Skipping book id={} during import: {}", book.getId(), ex.getMessage());
+                errors.add(ex.getMessage());
+            }
         }
-        log.info("Imported {} books from file={}", savedBooks.size(), file.getOriginalFilename());
-        return savedBooks;
+
+        log.info("Imported {} books ({} skipped) from file={}",
+                savedBooks.size(), errors.size(), file.getOriginalFilename());
+        return new BookImportResult(savedBooks, errors);
     }
 
     private BookDetail validateAndReuseDetail(BookDetail existing, BookDto book) {

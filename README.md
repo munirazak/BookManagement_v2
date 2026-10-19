@@ -109,6 +109,15 @@ curl -X POST http://localhost:8081/api/books/from-file \
   -F "file=@src/main/resources/sample-books.txt"
 ```
 
+Duplicates are skipped; other books still register. Response shape:
+
+```json
+{
+  "registered": [ { "id": "BOOK-002", "...": "..." } ],
+  "errors": [ "Book copy with id 'BOOK-001' already exists" ]
+}
+```
+
 ### Borrow / return (used by IndexShelf)
 ```bash
 curl -X POST http://localhost:8081/api/books/BOOK-001/borrow \

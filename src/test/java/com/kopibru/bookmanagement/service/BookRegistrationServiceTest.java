@@ -1,6 +1,7 @@
 package com.kopibru.bookmanagement.service;
 
 import com.kopibru.bookmanagement.dto.BookDto;
+import com.kopibru.bookmanagement.dto.BookImportResult;
 import com.kopibru.bookmanagement.exception.DuplicateBookException;
 import com.kopibru.bookmanagement.model.BookCopy;
 import com.kopibru.bookmanagement.model.BookDetail;
@@ -108,9 +109,34 @@ class BookRegistrationServiceTest {
         when(bookDetailRepository.save(any(BookDetail.class))).thenReturn(detail);
         when(bookCopyRepository.save(any(BookCopy.class))).thenReturn(copy);
 
-        List<BookDto> result = bookRegistrationService.readBooksFromFile(file);
+        BookImportResult result = bookRegistrationService.readBooksFromFile(file);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getId()).isEqualTo("BOOK-001");
+        assertThat(result.getRegistered()).hasSize(1);
+        assertThat(result.getRegistered().get(0).getId()).isEqualTo("BOOK-001");
+        assertThat(result.getErrors()).isEmpty();
+    }
+
+    @Test
+    void readBooksFromFile_skipsDuplicatesAndContinues() {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "books.txt", "text/plain", "data".getBytes());
+        BookDto existing = new BookDto("BOOK-001", "978-1", "Title", "Author", BookStatus.AVAILABLE, null);
+        BookDto neu = new BookDto("BOOK-002", "978-2", "Other", "Author", BookStatus.AVAILABLE, null);
+        BookDetail detail = new BookDetail("978-2", "Other", "Author");
+        BookCopy copy = new BookCopy("BOOK-002", detail, BookStatus.AVAILABLE);
+
+        when(bookFileReader.read(file)).thenReturn(List.of(existing, neu));
+        when(bookCopyRepository.existsById("BOOK-001")).thenReturn(true);
+        when(bookCopyRepository.existsById("BOOK-002")).thenReturn(false);
+        when(bookDetailRepository.findById("978-2")).thenReturn(Optional.empty());
+        when(bookDetailRepository.save(any(BookDetail.class))).thenReturn(detail);
+        when(bookCopyRepository.save(any(BookCopy.class))).thenReturn(copy);
+
+        BookImportResult result = bookRegistrationService.readBooksFromFile(file);
+
+        assertThat(result.getRegistered()).hasSize(1);
+        assertThat(result.getRegistered().get(0).getId()).isEqualTo("BOOK-002");
+        assertThat(result.getErrors()).hasSize(1);
+        assertThat(result.getErrors().get(0)).contains("BOOK-001");
     }
 }
