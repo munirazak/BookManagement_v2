@@ -23,3 +23,5 @@ services:
       DB_USERNAME: ${DB_USERNAME:-neondb_owner}
       DB_PASSWORD: ${DB_PASSWORD}
       SCHEMA_BOOTSTRAP_ENABLED: ${SCHEMA_BOOTSTRAP_ENABLED:-true}
+      # Must match IndexShelf INTERNAL_API_KEY
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-indexShelf-to-bookmanagement-internal-key-change-me}

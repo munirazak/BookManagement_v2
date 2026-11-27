@@ -106,6 +106,21 @@ Pull the published image (after a successful push to `main`):
 docker pull ghcr.io/<your-github-username>/bookmanagement:latest
 ```
 
+## Internal access only
+
+BookManagement `BookController` APIs are **not public**. Every `/api/**` request must include:
+
+```http
+X-Internal-Api-Key: <INTERNAL_API_KEY>
+```
+
+IndexShelf sends this automatically (`bookmanagement.internal-api-key` / env `INTERNAL_API_KEY`).
+Both services must use the **same** key. Direct browser/curl calls without the header receive `401`.
+
+| Env | Purpose |
+|-----|---------|
+| `INTERNAL_API_KEY` | Shared secret with IndexShelf (override default; use Secret Manager in prod) |
+
 ## APIs
 
 | Method | Path | Purpose |
@@ -116,16 +131,24 @@ docker pull ghcr.io/<your-github-username>/bookmanagement:latest
 | `POST` | `/api/books/{bookId}/borrow` | Borrow (`{"libraryId":"..."}`) |
 | `POST` | `/api/books/{bookId}/return` | Return (`{"libraryId":"..."}`) |
 
-### Register book
+Prefer calling these via **IndexShelf** (`http://localhost:8080`), including file import
+(`POST /api/books/from-file` on IndexShelf with SUPER_ADMIN JWT). Direct BookManagement `/api/**`
+calls without `X-Internal-Api-Key` return `401`.
+
+For local debugging of BookManagement only:
+
+### Register book (internal key required)
 ```bash
 curl -X POST http://localhost:8081/api/books \
   -H "Content-Type: application/json" \
+  -H "X-Internal-Api-Key: indexShelf-to-bookmanagement-internal-key-change-me" \
   -d '{"id":"BOOK-001","isbn":"978-0134685991","title":"Effective Java","author":"Joshua Bloch"}'
 ```
 
-### Import from file
+### Import from file (internal key required)
 ```bash
 curl -X POST http://localhost:8081/api/books/from-file \
+  -H "X-Internal-Api-Key: indexShelf-to-bookmanagement-internal-key-change-me" \
   -F "file=@src/main/resources/sample-books.txt"
 ```
 
@@ -138,9 +161,10 @@ Duplicates are skipped; other books still register. Response shape:
 }
 ```
 
-### Borrow / return (used by IndexShelf)
+### Borrow / return (internal; prefer IndexShelf)
 ```bash
 curl -X POST http://localhost:8081/api/books/BOOK-001/borrow \
   -H "Content-Type: application/json" \
+  -H "X-Internal-Api-Key: indexShelf-to-bookmanagement-internal-key-change-me" \
   -d '{"libraryId":"LIB-001"}'
 ```
